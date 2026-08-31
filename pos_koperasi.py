@@ -47,11 +47,10 @@ if not st.session_state['logged_in']:
     st.stop()
 
 # ==========================================
-# 2. KONEKSI CLOUD (SUPABASE via SQLAlchemy)
+# KONEKSI CLOUD (SUPABASE via SQLAlchemy)
 # ==========================================
 conn = st.connection("supabase", type="sql")
 
-# Buat tabel jika belum ada di Supabase
 with conn.session as session:
     session.execute(text('''
         CREATE TABLE IF NOT EXISTS stok_barang (
@@ -168,8 +167,8 @@ with tab_pos:
     with col_produk:
         cari_barang = st.text_input("🔍 Cari Barang di Etalase...", placeholder="Ketik nama barang...")
         
-        # Tarik data dari cloud via Pandas
-        df_barang = conn.query("SELECT * FROM stok_barang WHERE stok > 0")
+        # Tambahan ttl=0 agar stok selalu ter-update secara live
+        df_barang = conn.query("SELECT * FROM stok_barang WHERE stok > 0", ttl=0)
         
         if cari_barang:
             df_barang = df_barang[df_barang['nama_barang'].str.contains(cari_barang, case=False, na=False)]
@@ -225,7 +224,9 @@ if tab_gudang is not None:
 
         st.markdown("---")
         st.markdown("### ✏️ Edit atau Hapus Barang")
-        df_all = conn.query("SELECT * FROM stok_barang")
+        
+        # Tambahan ttl=0 agar tabel Gudang menampilkan data terbaru
+        df_all = conn.query("SELECT * FROM stok_barang", ttl=0)
         st.dataframe(df_all, use_container_width=True, hide_index=True)
         
         if not df_all.empty:
@@ -269,7 +270,9 @@ if tab_gudang is not None:
 with tab_laporan:
     if st.session_state['role'] == 'Admin':
         st.markdown("### 📊 Laporan Keuangan")
-        df_trx = conn.query("SELECT * FROM riwayat_transaksi ORDER BY id_trx DESC")
+        
+        # Tambahan ttl=0 agar laporan transaksi selalu up-to-date
+        df_trx = conn.query("SELECT * FROM riwayat_transaksi ORDER BY id_trx DESC", ttl=0)
         
         if not df_trx.empty:
             if 'pajak' not in df_trx.columns:
