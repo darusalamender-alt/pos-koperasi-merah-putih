@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import os
 from sqlalchemy import text
 
@@ -132,10 +132,12 @@ with tab_pos:
                 st.subheader(f"Total: Rp {grand_total:,.0f}")
                 
                 if st.button("💵 Bayar & Cetak Bon", type="primary", use_container_width=True):
-                    waktu_skrg = datetime.now().strftime("%Y-%m-%d %H:%M")
-                    tgl_db = str(date.today())
+                    # Injeksi Waktu WIB (UTC+7)
+                    waktu_wib = datetime.utcnow() + timedelta(hours=7)
+                    waktu_skrg = waktu_wib.strftime("%Y-%m-%d %H:%M")
+                    tgl_db = waktu_wib.strftime("%Y-%m-%d")
+                    id_struk_baru = f"INV-{waktu_wib.strftime('%Y%m%d%H%M%S')}"
                     kasir = st.session_state['role']
-                    id_struk_baru = f"INV-{datetime.now().strftime('%Y%m%d%H%M%S')}"
                     
                     struk_text = f"=================================\n      KOPERASI MERAH PUTIH\n=================================\nNo. Bon : {id_struk_baru}\nTanggal : {waktu_skrg}\nKasir   : {kasir}\n---------------------------------\n"
                     
@@ -167,7 +169,6 @@ with tab_pos:
     with col_produk:
         cari_barang = st.text_input("🔍 Cari Barang di Etalase...", placeholder="Ketik nama barang...")
         
-        # Tambahan ttl=0 agar stok selalu ter-update secara live
         df_barang = conn.query("SELECT * FROM stok_barang WHERE stok > 0", ttl=0)
         
         if cari_barang:
@@ -213,7 +214,8 @@ if tab_gudang is not None:
                 harga_jual = st.number_input("Harga Jual (Rp)", min_value=0)
             with c3:
                 stok = st.number_input("Stok Awal", min_value=0)
-                kedaluwarsa = st.date_input("Tanggal Kedaluwarsa", min_value=date.today())
+                # Opsi penambahan waktu otomatis untuk kadaluwarsa bila diperlukan
+                kedaluwarsa = st.date_input("Tanggal Kedaluwarsa", min_value=(datetime.utcnow() + timedelta(hours=7)).date())
             if st.form_submit_button("Simpan ke Database", type="primary") and nama:
                 with conn.session as session:
                     session.execute(text("INSERT INTO stok_barang (nama_barang, kategori, harga_beli, harga_jual, stok, tanggal_kedaluwarsa) VALUES (:n, :k, :hb, :hj, :s, :t)"), 
@@ -225,7 +227,6 @@ if tab_gudang is not None:
         st.markdown("---")
         st.markdown("### ✏️ Edit atau Hapus Barang")
         
-        # Tambahan ttl=0 agar tabel Gudang menampilkan data terbaru
         df_all = conn.query("SELECT * FROM stok_barang", ttl=0)
         st.dataframe(df_all, use_container_width=True, hide_index=True)
         
@@ -271,7 +272,6 @@ with tab_laporan:
     if st.session_state['role'] == 'Admin':
         st.markdown("### 📊 Laporan Keuangan")
         
-        # Tambahan ttl=0 agar laporan transaksi selalu up-to-date
         df_trx = conn.query("SELECT * FROM riwayat_transaksi ORDER BY id_trx DESC", ttl=0)
         
         if not df_trx.empty:
