@@ -1,4 +1,3 @@
 streamlit
 SQLAlchemy
-psycopg
-psycopg2-binary
+psycopg[binary]
